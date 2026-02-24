@@ -157,6 +157,27 @@ module GTmodeProject::TopRoot
 
     function onInitialize(context)
     {
+        // -----------------------------------------
+		// Next Race button
+        if (main::game.next_menu_arg.beginWith("autoplay_next_race"))
+        {
+             var parts = main::game.next_menu_arg.split(":");
+             var saved_vol = -1.0; 
+             
+             if (parts.size > 1)
+                 saved_vol = parts[1].toFloat();
+				 
+             main::sound.stopStream();
+             main::sound.fadeOutMusic(0.0); // Doesn't really do anything
+
+             main::game.next_menu_arg = "";
+
+             ROOT.appendChild(context, GTmodeProject::Common);
+
+             ScrollWindow::clip::space::EventGen.doAutoEventGen(context, saved_vol);
+             
+             return;
+        }
         context.cursor_visible = true;
         car_has_tuner = false;
 
@@ -2033,6 +2054,16 @@ module GTmodeProject::TopRoot::ScrollWindow::clip::space::EventGen
     {
         import main::game;
         import main::network;
+		
+		
+        // We save 
+        GTmodeProject::event_level = level;
+        GTmodeProject::event_laps = laps;
+        GTmodeProject::event_cat = allCategories ? 1 : 0; // Convert bool to int
+        
+        // We update the memory string
+        GTmodeProject::saveNewSettings(context, false, false);
+        // -------------------------------
 
         main::game.toggleMultiCategoryAI(allCategories);
 
@@ -2094,6 +2125,96 @@ module GTmodeProject::TopRoot::ScrollWindow::clip::space::EventGen
         Common::Veil::Course.actor.out = false;
 
         context.sync(1.0);
+
+        exit_menu(context, "solo_event");
+    }
+	
+	
+    function doAutoEventGen(context, saved_vol)
+    {
+        import main::game;
+
+        
+        Common::Veil.visible = true;
+        var bg_actor = main::menu::MFadeActor(Common::Veil::bg, 1.0);
+        Common::Veil::bg.actor = bg_actor;
+        
+        bg_actor.out = false; 
+        bg_actor.warp();      
+        
+        context.sync(0.1); 
+        
+
+        // Recover previous settings
+        var level = GTmodeProject::event_level;
+        var laps = GTmodeProject::event_laps;
+        var allCategories = (GTmodeProject::event_cat == 1);
+
+        main::game.toggleMultiCategoryAI(allCategories);
+
+        var offset = (level - 3).toFloat() * 0.01;
+        var garage = game.garage;
+        
+        var currentCar = garage.riding_car.car_code;
+        game.car_code = currentCar;
+
+        game.overwrite_enemy_num = 0;
+        game.major_menu_project = "gtmode";
+        game.major_menu_page = "TopRoot";
+
+        var max_entry = main::menu::MCourseData::GetMaxCarNum(game.course_code);
+        game.max_entry = max_entry;
+
+        game.race_code = "eventgen_0000";
+        if (isOpenOrTestCar(context))
+            game.race_code = "eventgen_2car_0000";
+        
+        if (!checkEntryTire(context, game.race_code, main::game.course_code))
+            return;
+
+        var list = main::menu::MCarData::PickUpEnemyCars(main::game.garage.riding_car, 
+            EnemyCarData::enemy_carlist,
+            offset, 0.04,
+            max_entry - 1,
+            false);
+
+        for (var i = 0; i < list.size; i++)
+            game.setEntryCarCode(i + 1, list[i][0], list[i][1]);
+            
+        game.overwrite_enemy_num = list.size;
+        game.overrideLaps(laps);
+
+        // This is needed to have the graphic show up
+        Common::Veil::Title.text = "Event Synthesizer";
+        Common::Veil::Course.text = context.translate(ROOT, "CourseName", game.course_code);
+        Common::Veil::Course.adjustScale();
+
+        Common::Veil::Title.visible = true;
+        Common::Veil::Course.visible = true;
+
+        var title_actor = main::menu::MFadeActor(Common::Veil::Title, 1.0);
+        Common::Veil::Title.actor = title_actor;
+        title_actor.out = false; 
+        title_actor.warp();
+
+        var course_actor = main::menu::MFadeActor(Common::Veil::Course, 1.0);
+        Common::Veil::Course.actor = course_actor;
+        course_actor.out = false; 
+        course_actor.warp();
+
+        context.cursor_visible = false;
+
+        // Small wait
+        context.sync(1.5);
+
+        // 
+        // Now that we're about to go out, let's turn the volume back up to the right level
+        // 
+        if (saved_vol != -1.0)
+        {
+            main::game.option.menu_bgm_volume = saved_vol;
+        }
+        // -----------------------------
 
         exit_menu(context, "solo_event");
     }
