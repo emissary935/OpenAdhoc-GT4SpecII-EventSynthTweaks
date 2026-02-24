@@ -61,6 +61,10 @@ module GTmodeProject
     static cam_flag = 8; // Bitflag to enable just roof cam by default
     static gauge_mode = -1; // -1 = Default, 0 = Always analog, 1 = Always digital
     static transmission_volume = 2; // 0 = off, 1 = quiet, 2 = normal, 3 = loud
+	static event_level = 3; // Default Normal
+    static event_laps = 2;
+    static event_cat = 0;   // 0 = false, 1 = true
+
 
     static owned_cars = [];
     static is_kaizo = false;
@@ -195,6 +199,18 @@ module GTmodeProject
                 case "tm":
                     transmission_volume = v.toInt();
                     break;
+					
+				// Event gen options
+                case "el": // Event Level
+                    event_level = v.toInt();
+                    break;
+                case "ep": // Event Laps (P for periods/laps)
+                    event_laps = v.toInt();
+                    break;
+                case "ec": // Event Category
+                    event_cat = v.toInt();
+                    break;
+                // --------------------------------	
             }
         }
 
@@ -224,6 +240,26 @@ module GTmodeProject
 
             } while (main
                 ::game.menuPop() != nil)
+        }
+		
+		// PRIZE CHECK (via next_menu_arg)
+        // We check if we have received a special prize
+        else if (main::game.next_menu_arg != nil && main::game.next_menu_arg != "" && !main::game.next_menu_arg.beginWith("autoplay") && main::game.next_menu_arg != "ending")
+        {
+            // Hand over the string to PresentRoot
+            GTmodeProject::PresentRoot::manual_prize_arg = main::game.next_menu_arg;
+            // This is to not make the reward show up twice
+            main::game.next_menu_arg = "";
+            // We set the landing page directly to the prize
+            page = PresentRoot;
+        }
+
+        
+        // If there is a "Next Race" (autoplay) command, we force TopRoot to load
+        else if (main::game.next_menu_arg != nil && main::game.next_menu_arg.beginWith("autoplay_next_race"))
+        {
+            // TopRoot contains the logic for managing autoplay in onInitialise
+            page = TopRoot;
         }
         else if (present_list.size > 0)
         {
@@ -921,7 +957,9 @@ module GTmodeProject
 
     function saveNewSettings(context, refreshCar, doMcSave)
     {
-        main::game.option.entrance_addr = "r=%{randomizer_flag};o=%{global_asmo};u=%{global_asmu};t=%{global_tcsc};as=%{aspec_reward};so=%{show_owned_cars};vm=%{video_mode};c=%{cam_flag};g=%{gauge_mode};tm=%{transmission_volume}";
+        // Added event gen options
+        main::game.option.entrance_addr = "r=%{randomizer_flag};o=%{global_asmo};u=%{global_asmu};t=%{global_tcsc};as=%{aspec_reward};so=%{show_owned_cars};vm=%{video_mode};c=%{cam_flag};g=%{gauge_mode};tm=%{transmission_volume};el=%{event_level};ep=%{event_laps};ec=%{event_cat}";
+        
         print main::game.option.entrance_addr;
         if (refreshCar)
             PROJECT.refreshRideCar(TopRoot, context, true);
