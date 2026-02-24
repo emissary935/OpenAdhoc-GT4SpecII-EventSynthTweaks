@@ -15,6 +15,135 @@
 module RaceEventProject::AfterRoot
 {
     #include "../quick-share/icon.ad";
+	
+	// --- VARIABLES FOR SYNTH REWARD ---
+    static prize_car_code = nil;
+    static prize_car_color = nil;
+    // -------------------------------------
+
+    
+    // COURSES 
+    // There is probably a better and more optimized way of doing this, but it works for now
+    static six_car_courses = [
+        "akasaka", "apricot", "autumn", "deepforest", "fisco", "fisco_old",
+        "grandvalley", "grandvalley_east", "highspeedring", "hongkong",
+        "infineon", "infineon_nascar", "kashiwa", "laguna", "midfield",
+        "mini", "montecarlo", "motegi", "motegi_east", "motegi_west",
+        "new_fisco", "new_fisco_gt", "newyork", "nurburgring", "oval",
+        "paris_tarmac", "route5", "route5_club", "sarthe", "sarthe_old",
+        "seattle", "seoul", "suzuka", "suzuka_east", "suzuka_west",
+        "tt_valencia", "trialmt", "tsukuba", "yosemite"
+    ];
+
+    static rally_dirt_courses = [ "swiss", "tahiti", "tsukuba_dirt", "cathedral", "colorado", "grandcanyon" ];
+    static rally_snow_courses = [ "ice", "chamonix" ];
+    static rally_road_courses = [
+        //"20r60r",
+        "akasaka",
+        "apricot",
+        "assisi",
+        "autumn",
+        "capri",
+        "deepforest",
+        "fisco",
+        "fisco_old",
+        "grandvalley",
+        "grandvalley_east",
+        "highspeedring",
+        "hongkong",
+        "infineon",
+        "infineon_nascar",
+        "kashiwa",
+        "laguna",
+        "midfield",
+        "mini",
+        "montecarlo",
+        "motegi",
+        "motegi_east",
+        "motegi_west",
+        "new_fisco",
+        "new_fisco_gt",
+        "newyork",
+        "nurburgring",
+        "oval",
+        "paris_rally",
+        "paris_tarmac",
+        //"r_20r60r",
+        "r_akasaka",
+        "r_apricot",
+        "r_assisi",
+        "r_autumn",
+        "r_capri",
+        "r_deepforest",
+        "r_grandvalley",
+        "r_grandvalley_east",
+        "r_highspeedring",
+        "r_hongkong",
+        "r_kashiwa",
+        "r_midfield",
+        "r_mini",
+        "r_newyork",
+        "r_paris_rally",
+        "r_paris_tarmac",
+        "r_route5",
+        "r_route5_club",
+        "r_seattle",
+        "r_seoul",
+        "r_trialmt",
+        "r_yosemite",
+        "route5",
+        "route5_club",
+        "sarthe24",
+        "sarthe_old24",
+        "seattle",
+        "seoul",
+        "suzuka",
+        "suzuka_east",
+        "suzuka_west",
+        //"testcourse",
+        "trialmt",
+        "tsukuba",
+        //"tt_valencia",
+        "yosemite"
+    ];
+
+function getRandomCourse(context, use_seed)
+{
+    var course_array = [];
+    import main::game;
+    var race = main::menu::MRaceData(game.race_code);
+
+    switch (race.getNeedTire())
+    {
+        case 3: 
+            course_array = RaceEventProject::AfterRoot::rally_dirt_courses;
+            break;
+        case 4: 
+            course_array = RaceEventProject::AfterRoot::rally_snow_courses;
+            break;
+        default:
+            if (race.entry_num < 6)
+                course_array = RaceEventProject::AfterRoot::rally_road_courses;
+            else
+                course_array = RaceEventProject::AfterRoot::six_car_courses;
+            break;
+    }
+
+    if (course_array.size == 0)
+    {
+        return "clubman"; 
+    }
+    else
+    {
+        var rnd = -1;
+        if (use_seed)
+            rnd = main::menu::MRandom::GetValue(0, course_array.size, fnv1a(main::game.username + game.race_code));
+        else 
+            rnd = main::menu::MRandom::GetValue(0, course_array.size);
+            
+        return course_array[rnd];
+    }
+}
 
     var quick_work = main::menu::MQuickWork();
     for (var i = 1; i <= quick_work.numberOfEntries; i++)
@@ -64,13 +193,38 @@ module RaceEventProject::AfterRoot
         GridTitle_text.adjustScale();
 
         main::sound.startStreamEx("pcm", "default_quick", -1, 1, main::game.option.menu_bgm_volume);
+		
+        var race_code = main::menu::MQuickWork().raceLabel;
+
+        
+        // We display the button ONLY in generated races
+        // and only if there is no car prize waiting to be redeemed.
+        if (race_code == "eventgen_0000" && prize_car_code == nil)
+            ROOT::Buttons["TestButton"].visible = true;
+        else
+            ROOT::Buttons["TestButton"].visible = false;
+
+         
+        
+        // // Now that the game knows exactly how many buttons are present 
         setIconPosition(context);
         setDefaultIconFocus(context);
     }
 
-    function set_next_start_project()
+	function set_next_start_project()
     {
         main::game.next_menu_project = main::game.major_menu_project;
+        // Where the magic happens with NEXT_MENU_ARG
+        // If there is a prize waiting, we write it on the "ticket" for the next menu.
+        if (prize_car_code != nil)
+        {
+            
+            main::game.next_menu_arg = prize_car_code;
+            
+            prize_car_code = nil;
+            prize_car_color = nil;
+        }
+        // --------------------------------------------
     }
 
     static icon_name_tbl = [
@@ -78,7 +232,8 @@ module RaceEventProject::AfterRoot
         "Replay",
         "SaveReplay",
         "Option",
-        "Exit"
+        "Exit",
+        "TestButton",
     ];
 
     function setIconPosition(context)
@@ -112,7 +267,6 @@ module RaceEventProject::AfterRoot
     function onCancel(context, event, item)
     {
         main::sound.play("cancel");
-
         main::sound.stopStream();
         var quick_work = main::menu::MQuickWork();
         quick_work.selectedCommand = "COMMAND_EXIT";
@@ -218,6 +372,52 @@ module RaceEventProject::AfterRoot::Buttons::Exit
 
         set_next_start_project();
         context.finish();
+        return STATE_YIELD;
+    }
+}
+
+module RaceEventProject::AfterRoot::Buttons::TestButton
+{
+    function onActivate(context)
+    {
+        import main::game;
+        main::sound.play("ok");
+        main::sound.stopStream();
+
+        var new_course_code = RaceEventProject::AfterRoot::getRandomCourse(context, false);
+
+        if (new_course_code != nil)
+        {
+            main::game.course_code = new_course_code;
+            
+            
+            // This doesn't really work, but I'm keeping it anyway
+            var current_vol = main::game.option.menu_bgm_volume;
+            
+            // Same as above
+            main::game.option.menu_bgm_volume = 0.0;
+            
+            // Same as above
+            main::game.option.apply(); 
+            
+            // Same as above
+            main::game.next_menu_arg = "autoplay_next_race:" + current_vol.toString();
+            // ---------------------------------------
+
+            main::game.next_menu_project = main::game.major_menu_project;
+
+            var quick_work = main::menu::MQuickWork();
+            quick_work.selectedCommand = "COMMAND_EXIT";
+            
+            context.transition.panOut(context);
+            context.transition.syncOut(context);
+            context.finish();
+        }
+        else
+        {
+            openConfirmDialog(context, 4, "Error: No course found");
+        }
+
         return STATE_YIELD;
     }
 }
