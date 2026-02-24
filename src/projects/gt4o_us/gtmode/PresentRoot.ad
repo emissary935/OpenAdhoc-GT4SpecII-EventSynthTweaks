@@ -12,6 +12,8 @@
 
 module GTmodeProject::PresentRoot
 {
+	static manual_prize_arg = nil;
+	
     function makeColumn(i)
     {
         if (i >= PresentData::condition_carlist.size)
@@ -340,8 +342,25 @@ module GTmodeProject::PresentRoot
         PaperPane::Paper::label2.adjustScale();
         PaperPane::Paper::label3.adjustScale();
         PaperPane::Paper::label4.adjustScale();
-        
-        current_idx = 0;
+
+        if (main::game.next_menu_arg != nil)
+        {
+            if (main::game.next_menu_arg.beginWith("custom_prize:"))
+            {
+                manual_prize_arg = main::game.next_menu_arg;
+                main::game.next_menu_arg = "";
+            }
+        }
+
+        if (manual_prize_arg == nil)
+        {
+            current_idx = 0;
+        }
+        else
+        {
+            current_idx = -1;
+        }
+            
         play(context);
     }
 
@@ -355,7 +374,40 @@ module GTmodeProject::PresentRoot
 
     function play(context)
     {
-        if (current_idx < current_list.size)
+        if (manual_prize_arg != nil)
+        {
+            print("--- DEBUG START ---\n");
+            print("MANUAL PRIZE ARG: [" + manual_prize_arg + "]\n");
+
+            Veil.actor.out = false;
+            Veil.actor.warp();
+
+            PaperPane.visible = false;
+            CarPane.visible = true;
+
+            var car_code = manual_prize_arg;
+            var car_color = "-"; 
+
+            print("Codice: [" + car_code + "]\n");
+            print("Colore: [" + car_color + "]\n");
+
+            var column = [ "synthesizer", "eventgen", "car", car_code, car_color ];
+
+            manual_prize_arg = nil;
+            current_idx = -1;
+            
+            var event = main::menu::MScriptEvent(context, CarPane, "get_car", column);
+            context.pushEvent(event);
+            return;
+        }
+
+        if (current_idx == -1)
+        {
+            start_page(context, TopRoot);
+            return;
+        }
+
+        if (current_list != nil && current_idx < current_list.size)
         {
             Veil.actor.out = false;
             Veil.actor.warp();
@@ -367,39 +419,29 @@ module GTmodeProject::PresentRoot
             current_idx++;
 
             var event = nil;
-
             switch (column[2])
             {
                 case "car":
                     CarPane.visible = true;
                     PaperPane.visible = false;
-
                     event = main::menu::MScriptEvent(context, CarPane, "get_car", column);
                     break;
-
                 case "paper":
                     CarPane.visible = false;
                     PaperPane.visible = true;
-
                     var category = column[1];
-
                     event = main::menu::MScriptEvent(context, PaperPane, "get_paper", [category]);
                     break;
-
                 case "movie":
                     var movie = column[3];
-
                     event = main::menu::MScriptEvent(context, PresentRoot, "get_movie", [movie]);
                     break;
-
                 default:
                     break;
             }
 
             if (event != nil)
-            {
                 context.pushEvent(event);
-            }
         }
         else if (ending != nil)
         {
@@ -414,10 +456,10 @@ module GTmodeProject::PresentRoot
         }
         else if (main::game.major_menu_project == "gtmode" && main::game.major_menu_page != "")
         {
-                var page = PROJECT[main::game.major_menu_page];
-                main::game.major_menu_project == ""; // BUG: Was "==", possible bug
-                main::game.major_menu_page = "";
-                start_page(context, page);
+            var page = PROJECT[main::game.major_menu_page];
+            main::game.major_menu_project = ""; 
+            main::game.major_menu_page = "";
+            start_page(context, page);
         }
         else
         {
@@ -451,10 +493,15 @@ module GTmodeProject::PresentRoot::CarPane
         return h;
     }
 
-    function get_car(context, func, race, type, car, col)
+            var prize_rand = randomizer_flag & FLAG_PRIZE_RANDOMIZER
+
+	function get_car(context, func, race, type, car, col)
     {
+        print("--- DEBUG GET_CAR START ---\n");
+        print("Car: [" + car + "]\n");
+        print("Col: [" + col + "]\n");
+
         main::sound.startStreamEx("pcm", "get_car", -1, 1, main::game.option.menu_bgm_volume);
-        
         CarFace.action_type = "normal";
         CarFace.visible = false;
         OK.visible = false;
@@ -470,8 +517,8 @@ module GTmodeProject::PresentRoot::CarPane
 
         if (PresentData.defined("allcars_carnum"))
         {
-            var prize_rand = randomizer_flag & FLAG_PRIZE_RANDOMIZER
-            if (prize_rand)
+            var prize_rand = randomizer_flag & 1;
+            if (prize_rand != 0 && func != "synthesizer" && manual_prize_arg == nil)
             {
                 car = PresentData::allcars_carlist[main::menu::MRandom::GetValue(0, PresentData::allcars_carnum-1, fnv1a(main::game.username + race + func))];
                 col = "-";
@@ -479,55 +526,132 @@ module GTmodeProject::PresentRoot::CarPane
             }
         }
 
+        if (car == nil || car == "")
+        {
+            car = "delta_hf_integrale_evo_91";
+        }
+        
+        if (func == "synthesizer" && PresentData.defined("content_carnum"))
+        {
+            for (var i = 0; i < PresentData::content_carnum; i++)
+            {
+                if (PresentData::content_carlist[i] == car)
+                {
+                    var official_col = PresentData::content2_carlist[i];
+                    if (official_col != "-")
+                    {
+                        col = official_col;
+                    }
+                    break;
+                }
+            }
+        }
+        
         context.sync(4.0);
 
-        Name::label.text = main::menu::MCarData::GetCarName(car);
+        var car_name_str = main::menu::MCarData::GetCarName(car);
+        if (car_name_str == nil || car_name_str == "")
+        {
+            car_name_str = "Unknown Car";
+        }
+        Name::label.text = car_name_str;
         Name::label.adjustScale();
-
-        //context.sync(1.0);
 
         ending = nil;
 
         if (col == "ending")
         {
-            if (main::menu::MSystem::GetVersionBranch() != "beta") // GT4 Online
+            if (main::menu::MSystem::GetVersionBranch() != "beta")
                 ending = "ending";
             
             col = "-";
         }
 
         var cg = main::menu::MCarGarage(car);
+        var col_num = 1;
+        if (cg != nil)
+        {
+            col_num = cg.getColorNum();
+        }
+        
         if (col == "-")
         {
-            var col_num = cg.getColorNum();
-            col = main::menu::MRandom::GetValue(0, col_num);
+            if (col_num > 1)
+            {
+                col = main::menu::MRandom::GetValue(0, col_num - 1);
+            }
+            else
+            {
+                col = 0;
+            }
         }
         else
         {
             col = col.toInt() - 1;
+            if (col < 0)
+            {
+                col = 0;
+            }
+            
+            
+            
+            if (col_num > 0 && col >= col_num)
+            {
+                col = main::menu::MRandom::GetValue(0, col_num - 1);
+            }
+            
         }
 
         var no_get = "";
-
         if (!main::game.garage.isFull())
         {
             main::game.garage.addNewCar(car, col);
-            main::game.calendar.putPresentCarEvent(car, col);
+            if (car != nil && car != "")
+            {
+                main::game.calendar.putPresentCarEvent(car, col);
+            }
             refreshOwnedCars();
         }
         else
-            var no_get = context.translate(ROOT, "since garage full you didnot get");
-
+        {
+            no_get = context.translate(ROOT, "since garage full you didnot get");
+        }
+		
         main::game.setCarAvailable(car);
         main::game.incTotalPrizeCars(1);
+        
         CarFace.visible = true;
         CarFace.car_code = car;
-        CarFace.setColorIndex(col);
-        var colname = CarFace.car_data.getColorName(col);
+        
+        var colname = "";
+        if (CarFace.car_data != nil)
+        {
+            CarFace.setColorIndex(col);
+            
+            var max_c = CarFace.car_data.getColorNum();
+            if (max_c != nil && col >= 0 && col < max_c)
+            {
+                var temp_name = CarFace.car_data.getColorName(col);
+                if (temp_name != nil)
+                {
+                    colname = temp_name;
+                }
+            }
+        }
+        else
+        {
+            CarFace.visible = false;
+        }
+
         CarFace::move_car(0, 1);
 
         switch (func)
         {
+            case "synthesizer":
+                var str = "Special Reward from Event Synthesizer";
+                str = str + no_get;
+                ToolTip::tip.value = str;
+                break;
             case "gold":
                 var license_category = context.translate(ROOT, "LicenseName", race.substr(0, 3) + "0000");
                 var license_name = context.translate(ROOT, "LicenseName", race);
@@ -541,7 +665,7 @@ module GTmodeProject::PresentRoot::CarPane
             case "all_silver":
             case "all_gold":
                 var license_category = context.translate(ROOT, "LicenseName", race.substr(0, 3) + "0000");
-                str = context.translate(ROOT, func);
+                var str = context.translate(ROOT, func);
                 str = str.format(license_category);
                 str = str + no_get;
                 ToolTip::tip.value = str;
@@ -586,13 +710,15 @@ module GTmodeProject::PresentRoot::CarPane
                 break;
 
             default:
-                ToolTip::tip.value = "";
+                var str = "Special Reward from Event Synthesizer";
+                str = str + no_get;
+                ToolTip::tip.value = str;
                 break;
         }
 
         ColourName::label.text = colname;
 
-        context.sync(2.0); // Only existed to time the appearance of OK with the music drop
+        context.sync(2.0);
         ColourName::label.actor.out = false;
         Name.actor.out = false;
         OK.visible = true;
