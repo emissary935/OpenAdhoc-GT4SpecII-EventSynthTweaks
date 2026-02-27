@@ -244,7 +244,7 @@ module GTmodeProject
 		
 		// PRIZE CHECK (via next_menu_arg)
         // We check if we have received a special prize
-        else if (main::game.next_menu_arg != nil && main::game.next_menu_arg != "" && !main::game.next_menu_arg.beginWith("autoplay") && main::game.next_menu_arg != "ending")
+        else if (main::game.next_menu_arg != nil && main::game.next_menu_arg.beginWith("@"))
         {
             // Hand over the string to PresentRoot
             GTmodeProject::PresentRoot::manual_prize_arg = main::game.next_menu_arg;
