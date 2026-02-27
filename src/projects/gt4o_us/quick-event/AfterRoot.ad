@@ -219,7 +219,7 @@ function getRandomCourse(context, use_seed)
         if (prize_car_code != nil)
         {
             
-            main::game.next_menu_arg = prize_car_code;
+            main::game.next_menu_arg = "@" + prize_car_code;
             
             prize_car_code = nil;
             prize_car_color = nil;
