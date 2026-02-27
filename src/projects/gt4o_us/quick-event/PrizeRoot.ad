@@ -969,4 +969,3 @@ module RaceEventProject::PrizeRoot::OK
         return STATE_YIELD;
     }
 }
-}
