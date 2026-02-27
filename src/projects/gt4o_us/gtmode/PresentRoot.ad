@@ -10,18 +10,6 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 module GTmodeProject::PresentRoot
 {
 	static manual_prize_arg = nil;
@@ -529,18 +517,13 @@ module GTmodeProject::PresentRoot::CarPane
 
         if (PresentData.defined("allcars_carnum"))
         {
-            var prize_rand = randomizer_flag & 1;
+            var prize_rand = randomizer_flag &  FLAG_PRIZE_RANDOMIZER
             if (prize_rand != 0 && func != "synthesizer" && manual_prize_arg == nil)
             {
                 car = PresentData::allcars_carlist[main::menu::MRandom::GetValue(0, PresentData::allcars_carnum-1, fnv1a(main::game.username + race + func))];
                 col = "-";
                 Shuffle.visible = true;
             }
-        }
-
-        if (car == nil || car == "")
-        {
-            car = "delta_hf_integrale_evo_91";
         }
         
         if (func == "synthesizer" && PresentData.defined("content_carnum"))
@@ -839,4 +822,3 @@ module GTmodeProject::PresentRoot::PaperPane::Paper::OK
         return EVENTRESULT_FILTER;
     }
 }
-
