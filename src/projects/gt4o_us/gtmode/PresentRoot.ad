@@ -10,6 +10,18 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 module GTmodeProject::PresentRoot
 {
 	static manual_prize_arg = nil;
@@ -377,7 +389,7 @@ module GTmodeProject::PresentRoot
         if (manual_prize_arg != nil)
         {
             print("--- DEBUG START ---\n");
-            print("MANUAL PRIZE ARG: [" + manual_prize_arg + "]\n");
+            print("Manual Prize Argument: [" + manual_prize_arg + "]\n");
 
             Veil.actor.out = false;
             Veil.actor.warp();
@@ -385,11 +397,11 @@ module GTmodeProject::PresentRoot
             PaperPane.visible = false;
             CarPane.visible = true;
 
-            var car_code = manual_prize_arg;
+            var car_code = manual_prize_arg.substr(1);
             var car_color = "-"; 
 
-            print("Codice: [" + car_code + "]\n");
-            print("Colore: [" + car_color + "]\n");
+            print("Car Code: [" + car_code + "]\n");
+            print("Car Color: [" + car_color + "]\n");
 
             var column = [ "synthesizer", "eventgen", "car", car_code, car_color ];
 
@@ -517,7 +529,7 @@ module GTmodeProject::PresentRoot::CarPane
 
         if (PresentData.defined("allcars_carnum"))
         {
-            var prize_rand = randomizer_flag & FLAG_PRIZE_RANDOMIZER
+            var prize_rand = randomizer_flag & 1;
             if (prize_rand != 0 && func != "synthesizer" && manual_prize_arg == nil)
             {
                 car = PresentData::allcars_carlist[main::menu::MRandom::GetValue(0, PresentData::allcars_carnum-1, fnv1a(main::game.username + race + func))];
@@ -526,6 +538,10 @@ module GTmodeProject::PresentRoot::CarPane
             }
         }
 
+        if (car == nil || car == "")
+        {
+            car = "delta_hf_integrale_evo_91";
+        }
         
         if (func == "synthesizer" && PresentData.defined("content_carnum"))
         {
@@ -823,3 +839,4 @@ module GTmodeProject::PresentRoot::PaperPane::Paper::OK
         return EVENTRESULT_FILTER;
     }
 }
+
